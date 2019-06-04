@@ -305,6 +305,7 @@ SECTIONS {
         src/pokenav_main_menu.o(.text);
         src/pokenav_match_call_ui.o(.text);
         src/pokenav_unk_1.o(.text);
+        src/pokenav_unk_2.o(.text);
         asm/pokenav_unk_2.o(.text);
         src/pokenav_unk_3.o(.text);
         src/pokenav_unk_4.o(.text);
@@ -314,6 +315,7 @@ SECTIONS {
         asm/pokenav_unk_8.o(.text);
         asm/pokenav_unk_9.o(.text);
         asm/pokenav_unk_10.o(.text);
+        src/pokenav_unk_10.o(.text);
         src/pokenav_match_call_data.o(.text);
         src/menu_specialized.o(.text);
         src/ereader_helpers.o(.text);
@@ -637,6 +639,7 @@ SECTIONS {
         src/pokenav_match_call_ui.o(.rodata);
         src/pokenav_unk_1.o(.rodata);
         data/pokenav.o(.rodata);
+        src/pokenav_unk_10.o(.rodata);
         src/pokenav_match_call_data.o(.rodata);
         src/menu_specialized.o(.rodata);
         data/ereader_helpers.o(.rodata);
@@ -1214,26 +1217,6 @@ SECTIONS {
         data/unknown_serial_data.o(.rodata);
         data/multiboot_berry_glitch_fix.o(.rodata);
         data/multiboot_pokemon_colosseum.o(.rodata);
-    } =0
-
-    gap1 :
-    {
-        gap1_start = ABSOLUTE(.);
-        BYTE(0x00)
-        . = 0x8B00000 - gap1_start;
-    } =0
-
-    anim_mon_front_pic_data :
-    ALIGN(4)
-    {
-        src/anim_mon_front_pics.o(.rodata);
-    } =0
-
-    gap2 :
-    {
-        gap2_start = ABSOLUTE(.);
-        BYTE(0x00)
-        . = 0x8C00000 - gap2_start;
     } =0
 
     gfx_data :
