@@ -25,7 +25,8 @@
 #include <set>
 #include <string>
 #include "scaninc.h"
-#include "source_file.h"
+#include "asm_file.h"
+#include "c_file.h"
 
 bool CanOpenFile(std::string path)
 {
@@ -45,7 +46,7 @@ int main(int argc, char **argv)
     std::queue<std::string> filesToProcess;
     std::set<std::string> dependencies;
 
-    std::vector<std::string> includeDirs;
+    std::list<std::string> includeDirs;
 
     argc--;
     argv++;
@@ -62,7 +63,7 @@ int main(int argc, char **argv)
                 argv++;
                 includeDir = std::string(argv[0]);
             }
-            if (!includeDir.empty() && includeDir.back() != '/')
+            if (includeDir.back() != '/')
             {
                 includeDir += '/';
             }
@@ -82,36 +83,79 @@ int main(int argc, char **argv)
 
     std::string initialPath(argv[0]);
 
-    filesToProcess.push(initialPath);
+    std::size_t pos = initialPath.find_last_of('.');
 
-    while (!filesToProcess.empty())
+    if (pos == std::string::npos)
+        FATAL_ERROR("no file extension in path \"%s\"\n", initialPath.c_str());
+
+    std::string extension = initialPath.substr(pos + 1);
+
+    std::string srcDir("");
+    std::size_t slash = initialPath.rfind('/');
+    if (slash != std::string::npos)
     {
-        std::string filePath = filesToProcess.front();
-        SourceFile file(filePath);
-        filesToProcess.pop();
+        srcDir = initialPath.substr(0, slash + 1);
+    }
+    includeDirs.push_back(srcDir);
 
-        includeDirs.push_back(file.GetSrcDir());
-        for (auto incbin : file.GetIncbins())
+    if (extension == "c" || extension == "h")
+    {
+        filesToProcess.push(initialPath);
+
+        while (!filesToProcess.empty())
         {
-            dependencies.insert(incbin);
-        }
-        for (auto include : file.GetIncludes())
-        {
-            for (auto includeDir : includeDirs)
+            CFile file(filesToProcess.front());
+            filesToProcess.pop();
+
+            file.FindIncbins();
+            for (auto incbin : file.GetIncbins())
             {
-                std::string path(includeDir + include);
-                if (CanOpenFile(path))
+                dependencies.insert(incbin);
+            }
+            for (auto include : file.GetIncludes())
+            {
+                for (auto includeDir : includeDirs)
                 {
-                    bool inserted = dependencies.insert(path).second;
-                    if (inserted)
+                    std::string path(includeDir + include);
+                    if (CanOpenFile(path))
                     {
-                        filesToProcess.push(path);
+                        bool inserted = dependencies.insert(path).second;
+                        if (inserted)
+                        {
+                            filesToProcess.push(path);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
         }
-        includeDirs.pop_back();
+    }
+    else if (extension == "s" || extension == "inc")
+    {
+        filesToProcess.push(initialPath);
+
+        while (!filesToProcess.empty())
+        {
+            AsmFile file(filesToProcess.front());
+
+            filesToProcess.pop();
+
+            IncDirectiveType incDirectiveType;
+            std::string path;
+
+            while ((incDirectiveType = file.ReadUntilIncDirective(path)) != IncDirectiveType::None)
+            {
+                bool inserted = dependencies.insert(path).second;
+                if (inserted
+                    && incDirectiveType == IncDirectiveType::Include
+                    && CanOpenFile(path))
+                    filesToProcess.push(path);
+            }
+        }
+    }
+    else
+    {
+        FATAL_ERROR("unknown extension \"%s\"\n", extension.c_str());
     }
 
     for (const std::string &path : dependencies)
